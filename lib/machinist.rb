@@ -66,8 +66,14 @@ module Machinist
       if @assigned_attributes.include?(symbol)
         @object.send(symbol)
       else
-        value = if block
+        value = if block && count_attribute?(symbol)
+          symbol = strip_count_from_symbol(symbol)
+          make_collection_with_count(symbol, block.call)
+        elsif block
           block.call
+        elsif count_attribute?(symbol)
+          symbol = strip_count_from_symbol(symbol)
+          make_collection_with_count(symbol, args.first)
         elsif args.first.is_a?(Hash) || args.empty?
           association_class(symbol).make(args.first || {})
         else
@@ -81,6 +87,27 @@ module Machinist
   private
     def association_class(symbol)
       object.class.reflections[symbol].klass
+    end
+
+    module Format
+      COUNT_ATTRIBUTE = /(.*)_count$/
+    end
+
+    def count_attribute?(symbol)
+      symbol.to_s =~ Format::COUNT_ATTRIBUTE
+    end
+
+    def strip_count_from_symbol(symbol)
+      (symbol.to_s =~ Format::COUNT_ATTRIBUTE)? $1.to_sym: symbol
+    end
+
+    def make_collection_with_count(symbol, count)
+      collection_class = association_class(symbol)
+      returning(collection = []) do
+        count.times do |counter|
+          collection << collection_class.make
+        end
+      end
     end
   end
 end
