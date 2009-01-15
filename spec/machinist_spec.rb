@@ -26,6 +26,34 @@ class InactiveRecord
 
   def saved?;    @saved;    end
   def reloaded?; @reloaded; end
+  
+  # Allow for testing of scenarios like:
+  #   belongs_to :shipping_address, :class_name => "Address"
+  # by mocking parts of the ActiveRecord reflection mechanism
+  def self.attr_association(symbol, klass = nil)
+    attr_accessor symbol
+    klass = symbol.to_s.camelize.constantize unless klass
+    reflections[symbol] = AssociationReflection.new klass
+  end
+
+  def self.reflections
+    @@association_classes ||= {}
+  end
+  
+private
+  class AssociationReflection
+    def initialize(klass)
+      @klass = klass
+    end
+
+    def klass
+      @klass
+    end
+  end
+end
+
+class Address < InactiveRecord
+  attr_accessor :line_one
 end
 
 class Person < InactiveRecord
@@ -33,6 +61,7 @@ class Person < InactiveRecord
   attr_accessor :name
   attr_accessor :type
   attr_accessor :password
+  attr_association :shipping_address, Address
   
   attr_protected :password
 end
@@ -43,7 +72,7 @@ class Post < InactiveRecord
 end
 
 class Comment < InactiveRecord
-  attr_accessor :post
+  attr_association :post
 end
 
 describe Machinist do
@@ -145,6 +174,16 @@ describe Machinist do
     it "should allow setting the type attribute in a blueprint" do
       Person.blueprint { type "test" }
       Person.make.type.should == "test"
+    end
+
+    it "should infer the shipping_address type of Address by reflecting on the model not try to create the object from the method name i.e. shipping_address => ShippingAddress" do
+      Person.blueprint do
+        shipping_address # This is an Address not a ShippingAddress
+      end
+      Address.blueprint do
+        line_one "21 Jump Street"
+      end
+      Person.make.shipping_address.line_one.should == "21 Jump Street"
     end
   end
   

@@ -69,13 +69,18 @@ module Machinist
         value = if block
           block.call
         elsif args.first.is_a?(Hash) || args.empty?
-          symbol.to_s.camelize.constantize.make(args.first || {})
+          association_class(symbol).make(args.first || {})
         else
           args.first
         end
         @object.send("#{symbol}=", value)
         @assigned_attributes << symbol
       end
+    end
+
+  private
+    def association_class(symbol)
+      object.class.reflections[symbol].klass
     end
   end
 end
