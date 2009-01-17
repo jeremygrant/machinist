@@ -29,7 +29,6 @@ class InactiveRecord
   
   # Allow for testing of scenarios like:
   #   belongs_to :shipping_address, :class_name => "Address"
-  #   has_many :photos, :class_name => "Image"
   # by mocking parts of the ActiveRecord reflection mechanism
   def self.attr_association(symbol, klass = nil)
     attr_accessor symbol
@@ -57,17 +56,12 @@ class Address < InactiveRecord
   attr_accessor :line_one
 end
 
-class Image < InactiveRecord
-  attr_accessor :filename
-end
-
 class Person < InactiveRecord
   attr_accessor :id
   attr_accessor :name
   attr_accessor :type
   attr_accessor :password
   attr_association :shipping_address, Address
-  attr_association :photos, Image
   
   attr_protected :password
 end
@@ -190,26 +184,6 @@ describe Machinist do
         line_one "21 Jump Street"
       end
       Person.make.shipping_address.line_one.should == "21 Jump Street"
-    end
-
-    it "should call a passed-in block and create a collection with 3 photos by using the photos_count attribute in the Person blueprint" do
-      Image.blueprint do
-        filename "rails.png"
-      end
-      Person.blueprint do
-        photos_count { 3 }
-      end
-      Person.make.photos.size == 3
-    end
-
-    it "should create a collection with 2 photos by using the photos_count attribute in the Person blueprint" do
-      Image.blueprint do
-        filename "rails.png"
-      end
-      Person.blueprint do
-        photos_count 2
-      end
-      Person.make.photos.size == 2
     end
   end
   
